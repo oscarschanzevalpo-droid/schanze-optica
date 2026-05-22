@@ -611,7 +611,7 @@ function fmtEje(el){
 //  SUPABASE CONFIG
 // ══════════════════════════════════════════
 const SB_URL = 'https://rgfgcwbyxjzwavcfvnwn.supabase.co';
-const SB_KEY = 'sb_publishable_iHF2hSK-G4OtOREhmiad3A_KLR20Qyd';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnZmdjd2J5eGp6d2F2Y2Z2bnduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTQwNDcsImV4cCI6MjA5NTAzMDA0N30.QjnuyQFOY6StWs2IHUPgK9T4vYe97D13xmTgBHMa3vs';
 
 async function sbGet(table){
   const r = await fetch(`${SB_URL}/rest/v1/${table}?select=*&order=created_at.asc&limit=2000`, {
