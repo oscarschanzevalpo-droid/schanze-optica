@@ -606,8 +606,122 @@ function fmtEje(el){
 }
 
 // ── DB ──
-function loadDB(){ return{ clientes:JSON.parse(localStorage.getItem('sz4_cli')||'[]'), ventas:JSON.parse(localStorage.getItem('sz4_ven')||'[]') }; }
-function saveDB(db){ localStorage.setItem('sz4_cli',JSON.stringify(db.clientes)); localStorage.setItem('sz4_ven',JSON.stringify(db.ventas)); updStor(); }
+
+// ══════════════════════════════════════════
+//  SUPABASE CONFIG
+// ══════════════════════════════════════════
+const SB_URL = 'https://rgfgcwbyxjzwavcfvnwn.supabase.co';
+const SB_KEY = 'sb_publishable_iHF2hSK-G4OtOREhmiad3A_KLR20Qyd';
+
+async function sbGet(table){
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?select=*&order=created_at.asc&limit=2000`, {
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}
+  });
+  if(!r.ok) return [];
+  return await r.json();
+}
+
+async function sbUpsert(table, row){
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+    body: JSON.stringify(row)
+  });
+  return r.ok;
+}
+
+async function sbDelete(table, col, val){
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}`, {
+    method:'DELETE',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  });
+  return r.ok;
+}
+
+// ── Map JS object ↔ Supabase row ──
+function clienteToRow(c){
+  return {
+    id:c.id||uid(), nombre:c.nombre||'', rut:c.rut||'', tel:c.tel||'',
+    od_esf:c.odEsf||'', od_cil:c.odCil||'', od_eje:c.odEje||'', od_dp:c.odDp||'',
+    oi_esf:c.oiEsf||'', oi_cil:c.oiCil||'', oi_eje:c.oiEje||'', oi_dp:c.oiDp||'',
+    od_add:c.odAdd||'', oi_add:c.oiAdd||'',
+    od_esfc:c.odEsfC||'', od_cilc:c.odCilC||'', od_ejec:c.odEjeC||'', od_dpc:c.odDpC||'',
+    oi_esfc:c.oiEsfC||'', oi_cilc:c.oiCilC||'', oi_ejec:c.oiEjeC||'', oi_dpc:c.oiDpC||'',
+    obs:c.obs||''
+  };
+}
+function rowToCliente(r){
+  return {
+    id:r.id, nombre:r.nombre, rut:r.rut, tel:r.tel,
+    odEsf:r.od_esf, odCil:r.od_cil, odEje:r.od_eje, odDp:r.od_dp,
+    oiEsf:r.oi_esf, oiCil:r.oi_cil, oiEje:r.oi_eje, oiDp:r.oi_dp,
+    odAdd:r.od_add, oiAdd:r.oi_add,
+    odEsfC:r.od_esfc, odCilC:r.od_cilc, odEjeC:r.od_ejec, odDpC:r.od_dpc,
+    oiEsfC:r.oi_esfc, oiCilC:r.oi_cilc, oiEjeC:r.oi_ejec, oiDpC:r.oi_dpc,
+    obs:r.obs
+  };
+}
+function ventaToRow(v){
+  return {
+    venta_id:v.ventaId||uid(), fecha:v.fecha||'', id_cliente:v.idCliente||'',
+    nombre:v.nombre||'', producto:v.producto||'', armazon:v.armazon||'',
+    precio_arm:Number(v.precioArm)||0, lente:v.lente||'', lab:v.lab||'',
+    indice:v.indice||'', material:v.material||'', trat_base:v.tratBase||'',
+    trat_sec:v.tratSec||'', precio_crist:Number(v.precioCrist)||0,
+    total:Number(v.total)||0, abono:Number(v.abono)||0, saldo:Number(v.saldo)||0,
+    estado:v.estado||'PENDIENTE', metodo:v.metodo||'No indica',
+    vendedor:v.vendedor||'', obs:v.obs||'', pagos:v.pagos||[]
+  };
+}
+function rowToVenta(r){
+  return {
+    ventaId:r.venta_id, fecha:r.fecha, idCliente:r.id_cliente,
+    nombre:r.nombre, producto:r.producto, armazon:r.armazon,
+    precioArm:Number(r.precio_arm), lente:r.lente, lab:r.lab,
+    indice:r.indice, material:r.material, tratBase:r.trat_base,
+    tratSec:r.trat_sec, precioCrist:Number(r.precio_crist),
+    total:Number(r.total), abono:Number(r.abono), saldo:Number(r.saldo),
+    estado:r.estado, metodo:r.metodo, vendedor:r.vendedor,
+    obs:r.obs, pagos:r.pagos||[]
+  };
+}
+
+// ── In-memory cache (loaded once on startup) ──
+let _db = {clientes:[], ventas:[]};
+
+function loadDB(){ return _db; }
+
+function saveDB(db){
+  _db = db;
+  updStor();
+}
+
+async function loadDBFromSupabase(){
+  showLoading(true);
+  try{
+    const [clis, vens] = await Promise.all([sbGet('clientes'), sbGet('ventas')]);
+    _db.clientes = clis.map(rowToCliente);
+    _db.ventas   = vens.map(rowToVenta);
+  } catch(e){
+    toast('Error conectando a la base de datos','error');
+  }
+  showLoading(false);
+  renderAll();
+  updStor();
+}
+
+function showLoading(on){
+  let el = document.getElementById('loading-overlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'loading-overlay';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:8000;font-family:Inter,sans-serif;font-size:15px;color:#fff;font-weight:700;letter-spacing:1px;';
+    el.innerHTML = '<div>Cargando datos...</div>';
+    document.body.appendChild(el);
+  }
+  el.style.display = on ? 'flex' : 'none';
+}
+
 function updStor(){ const db=loadDB(),n=db.clientes.length+db.ventas.length; document.getElementById('stor-n').textContent=n+' registros'; document.getElementById('stor-b').style.width=Math.min(100,n/600*100)+'%'; }
 
 // ── Calcular abono/saldo/estado desde pagos ──
@@ -754,12 +868,15 @@ function saveCliente(){
   const c={id:g('id'),nombre:g('nom').toUpperCase(),rut:g('rut'),tel:g('tel'),odEsf:g('od-esf'),odCil:g('od-cil'),odEje:g('od-eje'),odDp:g('od-dp'),oiEsf:g('oi-esf'),oiCil:g('oi-cil'),oiEje:g('oi-eje'),oiDp:g('od-dp'),odAdd:g('od-add'),oiAdd:g('od-add'),odEsfC:g('od-esfc'),odCilC:g('od-cilc'),odEjeC:g('od-ejec'),odDpC:g('od-dpc'),oiEsfC:g('oi-esfc'),oiCilC:g('oi-cilc'),oiEjeC:g('oi-ejec'),oiDpC:g('oi-dpc'),obs:g('obs')};
   if(!c.nombre){alert('El nombre es obligatorio.');return;}
   if(_eCli>=0) db.clientes[_eCli]=c; else db.clientes.push(c);
-  saveDB(db);closeM('m-cli');renderClientes();toast('Cliente guardado','success');
+  saveDB(db);closeM('m-cli');renderAll();toast('Cliente guardado','success');
+  sbUpsert('clientes', clienteToRow(c)).catch(()=>toast('Error guardando cliente','error'));
 }
 function delCli(idx){
   if(!isAdmin()){toast('Solo el administrador puede eliminar clientes','error');return;}
   if(!confirm('¿Eliminar cliente?'))return;
-  const db=loadDB();db.clientes.splice(idx,1);saveDB(db);renderClientes();
+  const db=loadDB(), cli=db.clientes[idx];
+  db.clientes.splice(idx,1);saveDB(db);renderAll();
+  sbDelete('clientes','id',cli.id).catch(()=>toast('Error eliminando en BD','error'));
 }
 
 function verRx(idx){
@@ -916,7 +1033,9 @@ function saveVenta(){
 function delVen(idx){
   if(!isAdmin()){toast('Solo el administrador puede eliminar ventas','error');return;}
   if(!confirm('¿Eliminar esta venta?'))return;
-  const db=loadDB(); db.ventas.splice(idx,1); saveDB(db); renderAll(); toast('Eliminada','info');
+  const db=loadDB(), v=db.ventas[idx];
+  db.ventas.splice(idx,1); saveDB(db); renderAll(); toast('Eliminada','info');
+  sbDelete('ventas','venta_id',v.ventaId).catch(()=>toast('Error eliminando en BD','error'));
 }
 
 // ── Detalle ──
@@ -1023,7 +1142,8 @@ function guardarPago(){
   if(!v.pagos) v.pagos=[];
   v.pagos.push({fecha:fechaPago,monto,metodo});
   calcVenta(v);
-  saveDB(db); closeM('m-pago'); renderPendientes(); renderDash();
+  saveDB(db); closeM('m-pago'); renderAll();
+  sbUpsert('ventas', ventaToRow(v)).catch(()=>toast('Error guardando pago','error'));
   toast(v.saldo===0?'✓ Saldo pagado — CANCELADO':'Abono registrado · Saldo: '+fmt(v.saldo), v.saldo===0?'success':'info');
 }
 
@@ -1206,6 +1326,7 @@ function doLogout(){
 function applyRole(){
   const role  = sessionStorage.getItem('sz_role');
   const label = sessionStorage.getItem('sz_label');
+  loadDBFromSupabase();
   // badge
   const badge = document.getElementById('role-badge');
   badge.innerHTML = `<span class="rbadge ${role}">${label}</span>
@@ -1218,12 +1339,14 @@ function applyRole(){
 
 // Iniciar app
 seedIfEmpty();
-updStor();
 if(isLoggedIn()){
   document.getElementById('login-screen').classList.add('hidden');
   applyRole();
+  loadDBFromSupabase();
+} else {
+  updStor();
+  renderDash();
 }
-renderDash();
 document.getElementById('bal-f').value=hoy();
 setMes();
 </script>
