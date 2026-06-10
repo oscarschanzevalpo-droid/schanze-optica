@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Schanze · Balance</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@500;600;700&display=swap');
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3350;
+  --accent:#4a6fa5;--accent2:#c0284a;--accent3:#0e9a4a;
+  --text:#eef0f7;--text2:#9ba3c0;--text3:#606880;
+  --warning:#e07800;
+  --vina:#4a6fa5;--valpo:#9b59b6;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;overscroll-behavior:none;}
+
+/* ── LOGIN ── */
+#login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;padding:24px;}
+#login.hidden{display:none;}
+.login-box{width:100%;max-width:340px;}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px;}
+.login-title{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--text);}
+.login-sub{font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.login-box input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--text);font-family:'DM Mono',monospace;font-size:16px;outline:none;margin-bottom:12px;}
+.login-box input:focus{border-color:var(--accent);}
+.login-btn{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;font-size:17px;cursor:pointer;margin-top:4px;}
+.login-err{color:var(--accent2);font-size:13px;text-align:center;min-height:18px;margin-bottom:8px;}
+
+/* ── APP ── */
+#app{display:none;padding:0 0 40px;}
+#app.visible{display:block;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.refresh-btn{background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;}
+.refresh-btn:active{background:var(--surface2);}
+.logout-btn{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:4px 6px;}
+
+/* ── FECHA ── */
+.fecha-bar{padding:10px 18px;font-size:12px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);}
+
+/* ── PERIODO TABS ── */
+.periodo-tabs{display:flex;padding:14px 18px 0;gap:8px;}
+.periodo-tab{flex:1;padding:9px 0;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;text-align:center;}
+.periodo-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;}
+.periodo-tab:active{opacity:.8;}
+
+/* ── SUCURSAL CARDS ── */
+.sucursales{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 18px;}
+@media(max-width:400px){.sucursales{grid-template-columns:1fr;}}
+
+.suc-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.suc-header{padding:12px 14px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
+.suc-dot{width:10px;height:10px;border-radius:50%;}
+.suc-vina .suc-dot{background:var(--vina);}
+.suc-valpo .suc-dot{background:var(--valpo);}
+.suc-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;}
+.suc-body{padding:12px 14px;}
+.suc-total{font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:var(--accent3);line-height:1;}
+.suc-total-label{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.suc-desglose{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+.suc-row{display:flex;justify-content:space-between;font-size:12px;}
+.suc-row span:first-child{color:var(--text2);}
+.suc-row span:last-child{font-weight:700;font-family:'Inter',sans-serif;}
+.suc-row.pendiente span:last-child{color:var(--warning);}
+.suc-divider{border:none;border-top:1px solid var(--border);margin:8px 0;}
+
+/* ── TOTAL COMBINADO ── */
+.total-card{margin:0 18px 12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.total-card-title{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+.total-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.total-item{text-align:center;}
+.total-item-val{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;}
+.total-item-val.green{color:var(--accent3);}
+.total-item-val.yellow{color:var(--warning);}
+.total-item-val.pink{color:var(--accent2);}
+.total-item-val.blue{color:var(--accent);}
+.total-item-label{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+
+/* ── VENTAS RECIENTES ── */
+.section-title{padding:14px 18px 8px;font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;}
+.venta-list{padding:0 18px;display:flex;flex-direction:column;gap:8px;}
+.venta-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+.venta-item.pendiente{border-left:3px solid var(--warning);}
+.venta-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.venta-nombre{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;}
+.venta-monto{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--accent3);}
+.venta-monto.pendiente{color:var(--warning);}
+.venta-bot{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);}
+.venta-suc{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;}
+.suc-tag-vina{background:rgba(74,111,165,.2);color:var(--vina);}
+.suc-tag-valpo{background:rgba(155,89,182,.2);color:var(--valpo);}
+
+/* ── LOADING ── */
+.loading{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;}
+.spinner{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:10px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── LAST UPDATE ── */
+.last-update{text-align:center;padding:12px;font-size:11px;color:var(--text3);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-box">
+    <div class="login-logo">
+      <div>
+        <div class="login-title">Schanze</div>
+        <div class="login-sub">Balance · Vista Móvil</div>
+      </div>
+    </div>
+    <input type="password" id="lg-pass" placeholder="Contraseña admin" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-err" id="lg-err"></div>
+    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-title">📊 Balance</span>
+    <div class="topbar-right">
+      <button class="refresh-btn" onclick="loadAll()">↻ Actualizar</button>
+      <button class="logout-btn" onclick="doLogout()">⏻</button>
+    </div>
+  </div>
+  <div class="fecha-bar" id="fecha-bar"></div>
+
+  <div class="periodo-tabs">
+    <button class="periodo-tab active" onclick="setPeriodo('hoy',this)">Hoy</button>
+    <button class="periodo-tab" onclick="setPeriodo('semana',this)">Semana</button>
+    <button class="periodo-tab" onclick="setPeriodo('mes',this)">Mes</button>
+  </div>
+
+  <div id="content">
+    <div class="loading"><div class="spinner"></div><br>Cargando...</div>
+  </div>
+
+  <div class="last-update" id="last-update"></div>
+</div>
+
+<script>
+// ── CONFIG ──
+const ADMIN_HASH = '0eb2fbdcc108f175d78ff7af3f1765caeeeb30f05bb5861e552f3a52c4e400e3';
+
+const SUCURSALES = [
+  { id:'vina',  nombre:'Viña del Mar', url:'https://rgfgcwbyxjzwavcfvnwn.supabase.co', key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnZmdjd2J5eGp6d2F2Y2Z2bnduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NTQwNDcsImV4cCI6MjA5NTAzMDA0N30.QjnuyQFOY6StWs2IHUPgK9T4vYe97D13xmTgBHMa3vs' },
+  { id:'valpo', nombre:'Valparaíso',    url:'https://wcmaxtimqixdxonhtafa.supabase.co',  key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjbWF4dGltcWl4ZHhvbmh0YWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDMyOTcsImV4cCI6MjA5NjAxOTI5N30.47NSl1sVCJbjPAyAY3gNEdDThxdzTJ7XByGb2yRt0R8' }
+];
+
+let periodo = 'hoy';
+let dataVina = [], dataValpo = [];
+
+// ── UTILS ──
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function hoy(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function inicioSemana(){
+  const d=new Date();
+  const dia=d.getDay()||7;
+  d.setDate(d.getDate()-dia+1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function inicioMes(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+}
+
+function fmtMoney(n){
+  return '$'+Math.round(n).toLocaleString('es-CL');
+}
+
+function fmtFecha(){
+  const d=new Date();
+  const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]} · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ── LOGIN ──
+async function doLogin(){
+  const p=document.getElementById('lg-pass').value;
+  const err=document.getElementById('lg-err');
+  if(!p){err.textContent='Ingresa la contraseña.';return;}
+  const hash=await sha256(p);
+  if(hash!==ADMIN_HASH){err.textContent='Contraseña incorrecta.';return;}
+  sessionStorage.setItem('bal_ok','1');
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  loadAll();
+}
+
+function doLogout(){
+  sessionStorage.clear();
+  document.getElementById('login').classList.remove('hidden');
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('lg-pass').value='';
+  document.getElementById('lg-err').textContent='';
+}
+
+// ── SUPABASE ──
+async function fetchVentas(suc){
+  try{
+    const h={'apikey':suc.key,'Authorization':'Bearer '+suc.key};
+    const r=await fetch(`${suc.url}/rest/v1/ventas?select=*&limit=5000`,{headers:h});
+    return r.ok ? await r.json() : [];
+  }catch{return [];}
+}
+
+// ── CARGA ──
+async function loadAll(){
+  document.getElementById('content').innerHTML='<div class="loading"><div class="spinner"></div><br>Cargando...</div>';
+  document.getElementById('fecha-bar').textContent=fmtFecha();
+
+  const [rv, rp] = await Promise.all([
+    fetchVentas(SUCURSALES[0]),
+    fetchVentas(SUCURSALES[1])
+  ]);
+
+  dataVina  = parseVentas(rv);
+  dataValpo = parseVentas(rp);
+
+  render();
+  document.getElementById('last-update').textContent='Actualizado: '+fmtFecha();
+}
+
+function parseVentas(rows){
+  return (rows||[]).map(r=>{
+    let pagos=[];
+    if(r.pagos){
+      if(r.pagos._pagos) pagos=r.pagos._pagos;
+      else if(Array.isArray(r.pagos)) pagos=r.pagos;
+    }
+    return {
+      fecha: r.fecha||'',
+      nombre: r.nombre||'',
+      producto: r.producto||'',
+      total: Number(r.total)||0,
+      abono: Number(r.abono)||0,
+      saldo: Number(r.saldo)||0,
+      estado: r.estado||'',
+      metodo: r.metodo||'',
+      pagos
+    };
+  });
+}
+
+// ── PERIODO ──
+function setPeriodo(p, btn){
+  periodo=p;
+  document.querySelectorAll('.periodo-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function fechaInicio(){
+  if(periodo==='hoy') return hoy();
+  if(periodo==='semana') return inicioSemana();
+  return inicioMes();
+}
+
+// ── CALCULAR ──
+function calcSucursal(ventas){
+  const desde=fechaInicio();
+  const hasta=hoy();
+
+  // Ingresos del período = pagos recibidos en ese rango
+  let efectivo=0, transferencia=0, tarjeta=0, otros=0;
+  ventas.forEach(v=>{
+    (v.pagos||[]).forEach(p=>{
+      if(p.fecha>=desde && p.fecha<=hasta){
+        const m=Number(p.monto)||0;
+        const met=(p.metodo||'').toLowerCase();
+        if(met.includes('efectivo')) efectivo+=m;
+        else if(met.includes('transferencia')) transferencia+=m;
+        else if(met.includes('tarjeta')) tarjeta+=m;
+        else otros+=m;
+      }
+    });
+  });
+
+  // Ventas creadas en el período
+  const ventasPeriodo=ventas.filter(v=>v.fecha>=desde && v.fecha<=hasta);
+  const totalVentas=ventasPeriodo.reduce((a,v)=>a+v.total,0);
+  const cantVentas=ventasPeriodo.length;
+
+  // Saldo pendiente total (todas las ventas, no solo del período)
+  const saldoPendiente=ventas.filter(v=>v.saldo>0).reduce((a,v)=>a+v.saldo,0);
+  const cantPendientes=ventas.filter(v=>v.saldo>0).length;
+
+  const totalIngresado=efectivo+transferencia+tarjeta+otros;
+
+  return {efectivo,transferencia,tarjeta,otros,totalIngresado,totalVentas,cantVentas,saldoPendiente,cantPendientes};
+}
+
+// ── RENDER ──
+function render(){
+  const sv=calcSucursal(dataVina);
+  const sp=calcSucursal(dataValpo);
+
+  const desde=fechaInicio();
+  const hasta=hoy();
+
+  // Últimas ventas del período (ambas sucursales combinadas)
+  const todasVentas=[
+    ...dataVina.filter(v=>v.fecha>=desde && v.fecha<=hasta).map(v=>({...v,suc:'vina'})),
+    ...dataValpo.filter(v=>v.fecha>=desde && v.fecha<=hasta).map(v=>({...v,suc:'valpo'}))
+  ].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,15);
+
+  // Movimientos de hoy siempre
+  const hoyStr=hoy();
+  const movHoy=[
+    ...dataVina.filter(v=>v.fecha===hoyStr).map(v=>({...v,suc:'vina'})),
+    ...dataValpo.filter(v=>v.fecha===hoyStr).map(v=>({...v,suc:'valpo'}))
+  ].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+  const periodoLabel = periodo==='hoy'?'Hoy':periodo==='semana'?'Esta semana':'Este mes';
+
+  document.getElementById('content').innerHTML=`
+
+    <!-- TOTALES COMBINADOS -->
+    <div style="padding:14px 18px 0">
+      <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Total combinado · ${periodoLabel}</div>
+      <div class="total-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Ingresado</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:19px;color:var(--accent3)">${fmtMoney(sv.totalIngresado+sp.totalIngresado)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Saldo Pendiente</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:19px;color:var(--warning)">${fmtMoney(sv.saldoPendiente+sp.saldoPendiente)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Ventas</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:19px;color:var(--accent)">${fmtMoney(sv.totalVentas+sp.totalVentas)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Pendientes</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:19px;color:var(--accent2)">${sv.cantPendientes+sp.cantPendientes} ventas</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUCURSALES -->
+    <div class="sucursales">
+      ${renderSuc('vina','Viña del Mar',sv)}
+      ${renderSuc('valpo','Valparaíso',sp)}
+    </div>
+
+    <!-- MOVIMIENTOS DEL DÍA -->
+    <div class="section-title">Movimientos del día (${movHoy.length})</div>
+    <div style="padding:0 18px;display:flex;flex-direction:column;gap:8px;">
+      ${movHoy.length ? movHoy.map(v=>`
+        <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${v.suc==='vina'?'var(--vina)':'var(--valpo)'};border-radius:12px;padding:12px 14px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+            <div>
+              <div style="font-weight:700;font-size:14px;color:var(--text)">${v.nombre||'—'}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">${v.producto||'—'}</div>
+            </div>
+            <span style="background:${v.suc==='vina'?'rgba(74,111,165,.2)':'rgba(155,89,182,.2)'};color:${v.suc==='vina'?'var(--vina)':'var(--valpo)'};padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;white-space:nowrap;">${v.suc==='vina'?'VIÑA':'VALPO'}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px;">
+            <div style="color:var(--text3);">Total venta</div>
+            <div style="font-weight:700;font-family:'Inter',sans-serif;color:var(--text)">${fmtMoney(v.total)}</div>
+            <div style="color:var(--text3);">Ingresado</div>
+            <div style="font-weight:700;font-family:'Inter',sans-serif;color:var(--accent3)">${fmtMoney(v.abono)}</div>
+            ${v.saldo>0?`<div style="color:var(--text3);">Saldo</div><div style="font-weight:700;font-family:'Inter',sans-serif;color:var(--warning)">${fmtMoney(v.saldo)}</div>`:''}
+            <div style="color:var(--text3);">Forma de pago</div>
+            <div style="font-weight:700;font-family:'Inter',sans-serif;color:var(--text)">${v.metodo||'—'}</div>
+            <div style="color:var(--text3);">Estado</div>
+            <div style="font-weight:700;font-family:'Inter',sans-serif;color:${v.estado==='CANCELADO'?'var(--accent3)':'var(--warning)'}">${v.estado||'—'}</div>
+          </div>
+        </div>`).join('')
+      : '<div style="text-align:center;color:var(--text3);padding:20px;font-size:13px;">Sin movimientos hoy</div>'}
+    </div>
+
+    <!-- VENTAS DEL PERÍODO (si no es hoy) -->
+    ${periodo!=='hoy'?`
+    <div class="section-title" style="margin-top:8px;">Todas las ventas del período (${todasVentas.length})</div>
+    <div class="venta-list">
+      ${todasVentas.length ? todasVentas.map(v=>`
+        <div class="venta-item ${v.saldo>0?'pendiente':''}">
+          <div class="venta-top">
+            <span class="venta-nombre">${v.nombre||'—'}</span>
+            <span class="venta-monto ${v.saldo>0?'pendiente':''}">${fmtMoney(v.saldo>0?v.saldo:v.total)}</span>
+          </div>
+          <div class="venta-bot">
+            <span>${v.saldo>0?'Saldo pendiente':'Cancelado'} · ${v.fecha}</span>
+            <span class="venta-suc suc-tag-${v.suc}">${v.suc==='vina'?'Viña':'Valpo'}</span>
+          </div>
+        </div>`).join('') : '<div style="text-align:center;color:var(--text3);padding:20px;font-size:13px;">Sin ventas en este período</div>'}
+    </div>`:''}
+  `;
+}
+
+function renderSuc(id, nombre, s){
+  return `
+    <div class="suc-card suc-${id}">
+      <div class="suc-header">
+        <div class="suc-dot"></div>
+        <span class="suc-name">${nombre}</span>
+      </div>
+      <div class="suc-body">
+        <div class="suc-total-label">Ingresado</div>
+        <div class="suc-total">${fmtMoney(s.totalIngresado)}</div>
+        <div class="suc-desglose">
+          <hr class="suc-divider">
+          <div class="suc-row"><span>Efectivo</span><span>${fmtMoney(s.efectivo)}</span></div>
+          <div class="suc-row"><span>Transfer.</span><span>${fmtMoney(s.transferencia)}</span></div>
+          <div class="suc-row"><span>Tarjeta</span><span>${fmtMoney(s.tarjeta)}</span></div>
+          <hr class="suc-divider">
+          <div class="suc-row"><span>Ventas (${s.cantVentas})</span><span>${fmtMoney(s.totalVentas)}</span></div>
+          <div class="suc-row pendiente"><span>Pendiente</span><span>${fmtMoney(s.saldoPendiente)}</span></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── INIT ──
+if(sessionStorage.getItem('bal_ok')){
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  loadAll();
+}
+document.getElementById('fecha-bar').textContent=fmtFecha();
+</script>
+</body>
+</html>
